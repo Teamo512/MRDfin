@@ -8,6 +8,12 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+/**
+ * First MRJob, just like wordcount
+ * set a HashMaP as the cache structure
+ * @author jiang
+ *
+ */
 public class FirstMapper extends Mapper<Object, Text, IntWritable, IntWritable>{
 
 	IntWritable one = new IntWritable(1);

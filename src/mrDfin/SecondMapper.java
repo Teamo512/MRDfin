@@ -21,6 +21,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 
 	private Map<Integer, Integer> allItemsMap; 
 	private Map<Integer, Integer> itemGroupNum; 
+	private int groupsNum;
 	/**
 	 * 获取缓存文件，因为要保证最终的flist是按支持度降序排列的，所以此处将文件的迭代访问读取工作放在了getFilst函数中
 	 */
@@ -28,6 +29,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 		super.setup(context);
 		allItemsMap = new HashMap<Integer, Integer>();
 		itemGroupNum = new HashMap<Integer, Integer>();
+		groupsNum = context.getConfiguration().getInt("GroupsNum", 1);
 		URI[] paths = context.getCacheFiles();
 		if(paths == null || paths.length <=0){
 			System.out.println("No DistributedCache keywords File!");
@@ -86,9 +88,9 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 		}
 		Collections.sort(list);
 		int[] arrayLine = Tools.toIntArray(list);
-		HashSet<Integer> groups = new HashSet<Integer>();
+		HashSet<Integer> groups = new HashSet<Integer>(groupsNum);
 		
-		for(int i=list.size()-1; i>=0; i--) {
+		for(int i=list.size()-1; i>=0 && groups.size()<groupsNum ; i--) {
 			int groupID = itemGroupNum.get(list.get(i));
 			
 			if(!groups.contains(groupID)) {
@@ -101,5 +103,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 	
 	protected void cleanup(Context context)  throws IOException, InterruptedException{
 		super.cleanup(context); 
+		allItemsMap = null;
+		itemGroupNum = null;
 	}
 }

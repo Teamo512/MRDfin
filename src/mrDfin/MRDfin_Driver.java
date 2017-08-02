@@ -35,17 +35,17 @@ import org.apache.hadoop.util.ToolRunner;
 
 public class MRDfin_Driver extends Configured implements Tool{
 	
-	private String[] moreParas;
+	private String[] moreParas;  //additional parameters that are pairs
 	private static String dataBaseName;
 	private double relativeSup;
 	public static int minSup;
 	private String inDir;
 	private String outDir;
 	private int dataSize;
-	private static int childJavaOpts;
+	private static int childJavaOpts;  //set jvm memoery
 	private static int mapperNum;
 	private static int reducerNum;
-	private static int groupNum;
+	private static int groupNum;  
 	
 	private String input;
 	private String output;
@@ -109,6 +109,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		return 0;
 	}
 	
+	//First Job:counting F1 and support
 	public void runFirst(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException{
 		long startTime = System.currentTimeMillis();
 		Path inPath = new Path(input);
@@ -140,6 +141,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 	}
 	
+	//Second Job: partition the prime database
 	public void runSecond(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException{
 		long startTime = System.currentTimeMillis();
 		Path inPath = new Path(input);
@@ -227,6 +229,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		eachLevelRunningTime.add(time/1000.0);
 	}
 	
+	//对一阶模式进行分组
 	public void partition(String uri, Configuration conf) {
 		HashMap<Integer,Integer> allItemsMap = new HashMap<Integer,Integer>();
 		Item[] itemSup;
@@ -266,8 +269,8 @@ public class MRDfin_Driver extends Configured implements Tool{
 				int i=0;
 				for(Entry<Integer,Integer> entry : list){
 					
-					writer.append(new IntWritable(entry.getKey()), new IntWritable(i));
-					itemSup[i] = new Item(i++, entry.getValue());
+					writer.append(new IntWritable(entry.getKey()), new IntWritable(i));//根据支持度降序，给模式重新赋值，从0开始递增
+					itemSup[i] = new Item(i++, entry.getValue());//记录赋值后的模式与其支持度的对应关系
 					//allItemsMap.put(entry.getKey(), i++);
 				}
 				writer.close();
@@ -286,6 +289,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 	}
 	
+	//根据分组个数，将一阶模式分组，并保存
 	public void saveItemGroup(String uri, Item[] itemSup, Configuration conf, int N) {
 		SequenceFile.Writer writer = null;
 		int M = itemSup.length;
@@ -295,12 +299,14 @@ public class MRDfin_Driver extends Configured implements Tool{
 			//IntWritable value = new IntWritable();
 			
 			writer = SequenceFile.createWriter(conf, SequenceFile.Writer.file(path), SequenceFile.Writer.keyClass(IntWritable.class), SequenceFile.Writer.valueClass(IntWritable.class));
-			if(M <= N) {
+			if(M <= N) {  //模式个数M不足分组数大小N时，就分成M组，否则就分成N组
+				conf.setInt("GroupsNum", M);
 				int i = 0;
 				for(Item item : itemSup) {
 					writer.append(new IntWritable(item.item), new IntWritable(i++));
 				}
-			}else {
+			}else {  // 按贪心算法策略进行分组，每次都将下一个模式存入最小的分组中
+				conf.setInt("GroupsNum", N);
 				int j = 0;
 				int[] group = new int[N];
 				for(; j<N; j++) {
@@ -325,6 +331,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 	}
 	
+	//获取数组中最小元素的数组下标
 	public int getIndex(int[] group) {
 		int j=0;
 		for(int i=0; i<group.length; i++) {
@@ -335,6 +342,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 	}
 	
+	//保存输出信息，(包括数据库名，各阶段时间，挖掘模式等信息)
 	public void saveResult(String datasetName, double suppPercent, long supp, long time, String outputResultFilename, String[] moreParas) {
 		try {
 			

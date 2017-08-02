@@ -3,11 +3,10 @@ package mrDfin;
 import java.io.IOException;
 
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 
-public class FirstReducer extends Reducer<IntWritable, IntWritable, IntWritable, Writable>{
+public class FirstReducer extends Reducer<IntWritable, IntWritable, IntWritable, IntWritable>{
 	private int minSupport;
 	@Override
 	protected void setup(Context context) throws IOException, InterruptedException{
