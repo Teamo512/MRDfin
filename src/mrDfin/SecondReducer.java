@@ -1,7 +1,10 @@
 package mrDfin;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -12,13 +15,14 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	
 	public PPCTreeNode ppcRoot;
 	public NodeListTreeNode nlRoot;
-	public PPCTreeNode[] headTable;
-	public int[] headTableLen;
 	public int[] itemsetCount;
 	public int[] sameItems;
 	public int PPCNodeCount;
 	public int nlNodeCount;
 	public int numOfFItem;
+	
+	public Item[] item;
+	public int[] itemSup;
 	
 	public int[] nlistBegin;
 	public int nlistCol;
@@ -34,6 +38,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	
 	int outputCount = 0;
 	
+	Set<Integer> set = null;
+	
 	// public FILE out;
 	public int[] result; // the current itemset
 	public int resultLen = 0; // the size of the current itemset
@@ -43,13 +49,15 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	protected void setup(Context context) throws IOException, InterruptedException{
 		super.setup(context);		
 		minSupport = context.getConfiguration().getInt("minSup", 0);
-		ppcRoot = new PPCTreeNode();
+		
 		nlRoot = new NodeListTreeNode();
 		nlNodeCount = 0;
 	}
 	
 	public void reduce(IntWritable key, Iterable<ValueWritable> values, Context context){
 		int[] transaction = null;
+		ppcRoot = new PPCTreeNode();
+		nlRoot = new NodeListTreeNode();
 		ppcRoot.label = -1;
 		PPCNodeCount = 0;
 		
@@ -60,13 +68,105 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 
 		bf_cursor = 0;
 		bf_col = 0;
-		
+		set = new HashSet<Integer>();
 		for(ValueWritable value : values){
 			transaction = value.itemset;
 			buildTree(transaction);
 		}
+		numOfFItem = set.size();
+		set = null;
+		itemSup = new int[numOfFItem];
+		
+		resultLen = 0;
+		result = new int[numOfFItem];
+		
+		traveseGetNodeSet();
+		
+		
+		
 		ppcRoot = null;
 		
+		initializeTree();
+		sameItems = new int[numOfFItem];
+
+		int from_cursor = bf_cursor;
+		int from_col = bf_col;
+		int from_size = bf_currentSize;
+
+		// Recursively traverse the tree
+		NodeListTreeNode curNode = nlRoot.firstChild;
+		NodeListTreeNode next = null;
+		while (curNode != null) {
+			next = curNode.next;
+			// call the recursive "traverse" method
+			//sameCount = 0;
+			try {
+				traverse(curNode, nlRoot, 1, 0, context);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			for (int c = bf_col; c > from_col; c--) {
+				bf[c] = null;
+			}
+			bf_col = from_col;
+			bf_cursor = from_cursor;
+			bf_currentSize = from_size;
+			curNode = next;
+		}
+		
+		printStats();
+	}
+	
+	
+	public void buildTree(int[] transaction){
+		
+		int curPos = 0;
+		PPCTreeNode curRoot = (ppcRoot);
+		PPCTreeNode rightSibling = null;
+		int tLen = transaction.length;
+		while (curPos != tLen) {
+			PPCTreeNode child = curRoot.firstChild;
+			while (child != null) {
+				if (child.label == transaction[curPos]) {
+					curPos++;
+					child.count++;
+					curRoot = child;
+					break;
+				}
+				if (child.rightSibling == null) {
+					rightSibling = child;
+					child = null;
+					break;
+				}
+				child = child.rightSibling;
+			}
+			if (child == null)
+				break;
+		}
+		for (int j = curPos; j < tLen; j++) {
+			PPCTreeNode ppcNode = new PPCTreeNode();
+			ppcNode.label = transaction[j];
+			set.add(transaction[j]);
+			if (rightSibling != null) {
+				rightSibling.rightSibling = ppcNode;
+				rightSibling = null;
+			} else {
+				curRoot.firstChild = ppcNode;
+			}
+			ppcNode.rightSibling = null;
+			ppcNode.firstChild = null;
+			ppcNode.father = curRoot;
+			ppcNode.labelSibling = null;
+			ppcNode.count = 1;
+			curRoot = ppcNode;
+			PPCNodeCount++;
+		}
+		
+		
+	}
+
+	public void traveseGetNodeSet() {
 		PPCTreeNode root = ppcRoot.firstChild;
 		int pre = 0;
 		itemsetCount = new int[(numOfFItem - 1) * numOfFItem / 2];
@@ -76,6 +176,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		while (root != null) {
 			root.foreIndex = pre;
 			SupportDict[pre] = root.count;
+			itemSup[root.label] += root.count; 
 			pre++;
 			PPCTreeNode temp = root.father;
 			while (temp.label != -1) {
@@ -152,83 +253,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 				nlistBegin[i] = nlistBegin[i] - nlistLen[i];
 			}
 		}
-		
-		initializeTree();
-		sameItems = new int[numOfFItem];
-
-		int from_cursor = bf_cursor;
-		int from_col = bf_col;
-		int from_size = bf_currentSize;
-
-		// Recursively traverse the tree
-		NodeListTreeNode curNode = nlRoot.firstChild;
-		NodeListTreeNode next = null;
-		while (curNode != null) {
-			next = curNode.next;
-			// call the recursive "traverse" method
-			//sameCount = 0;
-			try {
-				traverse(curNode, nlRoot, 1, 0);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			for (int c = bf_col; c > from_col; c--) {
-				bf[c] = null;
-			}
-			bf_col = from_col;
-			bf_cursor = from_cursor;
-			bf_currentSize = from_size;
-			curNode = next;
-		}
 	}
 	
-	
-	public void buildTree(int[] transaction){
-		
-		int curPos = 0;
-		PPCTreeNode curRoot = (ppcRoot);
-		PPCTreeNode rightSibling = null;
-		int tLen = transaction.length;
-		while (curPos != tLen) {
-			PPCTreeNode child = curRoot.firstChild;
-			while (child != null) {
-				if (child.label == transaction[curPos]) {
-					curPos++;
-					child.count++;
-					curRoot = child;
-					break;
-				}
-				if (child.rightSibling == null) {
-					rightSibling = child;
-					child = null;
-					break;
-				}
-				child = child.rightSibling;
-			}
-			if (child == null)
-				break;
-		}
-		for (int j = curPos; j < tLen; j++) {
-			PPCTreeNode ppcNode = new PPCTreeNode();
-			ppcNode.label = transaction[j];
-			if (rightSibling != null) {
-				rightSibling.rightSibling = ppcNode;
-				rightSibling = null;
-			} else {
-				curRoot.firstChild = ppcNode;
-			}
-			ppcNode.rightSibling = null;
-			ppcNode.firstChild = null;
-			ppcNode.father = curRoot;
-			ppcNode.labelSibling = null;
-			ppcNode.count = 1;
-			curRoot = ppcNode;
-		}
-		
-		
-	}
-
 	public void initializeTree() {
 		NodeListTreeNode lastChild = null;
 		for (int t = numOfFItem - 1; t >= 0; t--) {
@@ -240,7 +266,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 			nlNode.NLCol = bf_col;
 			nlNode.firstChild = null;
 			nlNode.next = null;
-			//nlNode.support = item[t].num;
+			nlNode.support = itemSup[t];
 			if (nlRoot.firstChild == null) {
 				nlRoot.firstChild = nlNode;
 				lastChild = nlNode;
@@ -249,9 +275,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 				lastChild = nlNode;
 			}
 		}
+		
 	}
 	
-	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, int sameCount) throws IOException {
+	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, int sameCount, Context context) throws IOException {
 
 		NodeListTreeNode sibling = curNode.next;
 		NodeListTreeNode lastChild = null;
@@ -284,7 +311,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 
 		// ============= Write itemset(s) to file ===========
 		//writeItemsetsToFile(curNode, sameCount);
-
+		writeResult(curNode, sameCount, context, level);
 		// ======== end of write to file
 
 		nlNodeCount++;
@@ -296,7 +323,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		NodeListTreeNode next = null;
 		while (child != null) {
 			next = child.next;
-			traverse(child, curNode, level + 1, sameCount);
+			traverse(child, curNode, level + 1, sameCount, context);
 			for (int c = bf_col; c > from_col; c--) {
 				bf[c] = null;
 			}
@@ -308,8 +335,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		resultLen--;
 	}
 	
-	NodeListTreeNode gen2ItemSet(NodeListTreeNode ni, NodeListTreeNode nj,
-			NodeListTreeNode lastChild, IntegerByRef sameCount) {
+	public NodeListTreeNode gen2ItemSet(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild, IntegerByRef sameCount) {
 		int i = ni.label;
 		int j = nj.label;
 		if (ni.support == itemsetCount[(i - 1) * i / 2 + j]) {
@@ -335,8 +361,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		return lastChild;
 	}
 
-	NodeListTreeNode gen3ItemSet(NodeListTreeNode ni, NodeListTreeNode nj,
-			NodeListTreeNode lastChild, IntegerByRef sameCount) {
+	public NodeListTreeNode gen3ItemSet(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild, IntegerByRef sameCount) {
 		if(bf_cursor + ni.NLLength > bf_currentSize)
 		{
 			bf_col++;
@@ -411,8 +436,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		return lastChild;
 	}
 	
-	NodeListTreeNode getKItemset(NodeListTreeNode ni, NodeListTreeNode nj,
-			NodeListTreeNode lastChild, IntegerByRef sameCountRef) {
+	public NodeListTreeNode getKItemset(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild, IntegerByRef sameCountRef) {
 
 		if (bf_cursor + ni.NLLength > bf_currentSize) {
 			bf_col++;
@@ -477,15 +501,30 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		return lastChild;
 	}
 	
-	/*private void writeItemsetsToFile(NodeListTreeNode curNode, int sameCount) throws IOException {
-
+	public void writeResult(NodeListTreeNode curNode, int sameCount, Context context, int level) throws IOException {
+		if (curNode.support >= minSupport && level > 1) {
+			context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
+			outputCount++;
+		}
+		if(sameCount > 0) {
+			for (long i = 1, max = 1 << sameCount; i < max; i++) {
+				
+				context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
+				outputCount++;
+			}
+		}
+		
+	}
+	
+	private void writeItemsetsToFile(NodeListTreeNode curNode, int sameCount) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter("result"));
 		// create a stringuffer
 		StringBuilder buffer = new StringBuilder();
 		if(curNode.support >= minSupport) {
 			outputCount++;
 			// append items from the itemset to the StringBuilder
 			for (int i = 0; i < resultLen; i++) {
-				buffer.append(item[result[i]]);
+				buffer.append(result[i]);
 				buffer.append(' ');
 			}
 			// append the support of the itemset
@@ -500,7 +539,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 			// generate all subsets of the node list except the empty set
 			for (long i = 1, max = 1 << sameCount; i < max; i++) {
 				for (int k = 0; k < resultLen; k++) {
-					buffer.append(item[result[k]].index);
+					//buffer.append(item[result[k]].index);
+					buffer.append(result[k]);
 					buffer.append(' ');
 				}
 
@@ -510,7 +550,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 					int isSet = (int) i & (1 << j);
 					if (isSet > 0) {
 						// if yes, add it to the set
-						buffer.append(item[sameItems[j]].index);
+						buffer.append(sameItems[j]);
 						buffer.append(' ');
 						// newSet.add(item[sameItems[j]].index);
 					}
@@ -524,8 +564,15 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		// write the strinbuffer to file and create a new line
 		// so that we are ready for writing the next itemset.
 		writer.write(buffer.toString());
-	}*/
+	}
 	
+	
+	public void printStats() {
+		System.out.println("========== DFIN - STATS ============");
+		System.out.println(" Minsup = " + minSupport);
+		System.out.println(" Number of frequent  itemsets: " + outputCount);
+		System.out.println("=====================================");
+	}
 	class IntegerByRef {
 		int count;
 	}

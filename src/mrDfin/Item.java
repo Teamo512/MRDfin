@@ -12,4 +12,8 @@ public class Item {
 		this.item = item;
 		this.count = count;
 	}
+	
+	public String toString() {
+		return item + ": " + count;
+	}
 }

@@ -160,7 +160,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		
 		job.setMapperClass(SecondMapper.class);
-		//job.setReducerClass(SecondReducer.class);
+		job.setReducerClass(SecondReducer.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(ValueWritable.class);
 		//job.setOutputValueClass(myWritable.class);

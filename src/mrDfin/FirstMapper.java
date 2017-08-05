@@ -24,11 +24,11 @@ public class FirstMapper extends Mapper<Object, Text, IntWritable, IntWritable>{
 		String[] line = value.toString().split(" ");
 		for(int i=1; i<line.length; i++){
 			int item = Integer.parseInt(line[i]);
-			if(hashmap.containsKey(item)){
-				int count = hashmap.get(item);
-				hashmap.put(item, ++count);
-			}else{
+			Integer count = hashmap.get(item);
+			if(count == null){
 				hashmap.put(item, 1);
+			}else{
+				hashmap.put(item, ++count);
 			}
 		}
 	}
