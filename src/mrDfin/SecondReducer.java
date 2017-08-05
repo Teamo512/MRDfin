@@ -1,12 +1,15 @@
 package mrDfin;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.io.SequenceFile.Reader;
 import org.apache.hadoop.mapreduce.Reducer;
 
 public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritable, IntWritable>{
@@ -24,6 +27,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	public Item[] item;
 	public int[] itemSup;
 	
+	
 	public int[] nlistBegin;
 	public int nlistCol;
 	public int[] nlistLen;
@@ -38,7 +42,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	
 	int outputCount = 0;
 	
+	public boolean useFileCache;
+	
 	Set<Integer> set = null;
+	Set<Integer> itemOfGroup = null;
 	
 	// public FILE out;
 	public int[] result; // the current itemset
@@ -52,6 +59,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		
 		nlRoot = new NodeListTreeNode();
 		nlNodeCount = 0;
+		
+		useFileCache = context.getConfiguration().getBoolean("Cache", true);
 	}
 	
 	public void reduce(IntWritable key, Iterable<ValueWritable> values, Context context){
@@ -60,6 +69,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		nlRoot = new NodeListTreeNode();
 		ppcRoot.label = -1;
 		PPCNodeCount = 0;
+		//numOfFItem = 0;
 		
 		bf_size = 1000000;
 		bf = new int[100000][];
@@ -69,6 +79,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		bf_cursor = 0;
 		bf_col = 0;
 		set = new HashSet<Integer>();
+		//itemOfGroup = getItemOfGroup(key.get(), context);
+		
 		for(ValueWritable value : values){
 			transaction = value.itemset;
 			buildTree(transaction);
@@ -93,6 +105,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		int from_col = bf_col;
 		int from_size = bf_currentSize;
 
+		if(useFileCache)
+			itemOfGroup = getItemOfGroup(key.get(), context);
+		else
+			itemOfGroup = getItemOfGroup_bak(key.get(), context);
 		// Recursively traverse the tree
 		NodeListTreeNode curNode = nlRoot.firstChild;
 		NodeListTreeNode next = null;
@@ -115,7 +131,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 			curNode = next;
 		}
 		
-		printStats();
+		//printStats();
 	}
 	
 	
@@ -280,6 +296,9 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	
 	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, int sameCount, Context context) throws IOException {
 
+		if(level == 1 && !itemOfGroup.contains(curNode.label))
+			return;
+		
 		NodeListTreeNode sibling = curNode.next;
 		NodeListTreeNode lastChild = null;
 		while (sibling != null) {
@@ -504,19 +523,19 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	public void writeResult(NodeListTreeNode curNode, int sameCount, Context context, int level) throws IOException {
 		if (curNode.support >= minSupport && level > 1) {
 			context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
-			outputCount++;
+			//outputCount++;
 		}
 		if(sameCount > 0) {
 			for (long i = 1, max = 1 << sameCount; i < max; i++) {
 				
 				context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
-				outputCount++;
+				//outputCount++;
 			}
 		}
 		
 	}
 	
-	private void writeItemsetsToFile(NodeListTreeNode curNode, int sameCount) throws IOException {
+	/*private void writeItemsetsToFile(NodeListTreeNode curNode, int sameCount) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new FileWriter("result"));
 		// create a stringuffer
 		StringBuilder buffer = new StringBuilder();
@@ -564,15 +583,54 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		// write the strinbuffer to file and create a new line
 		// so that we are ready for writing the next itemset.
 		writer.write(buffer.toString());
+	}*/
+	
+	public HashSet<Integer> getItemOfGroup_bak(int groupNum, Context context) {
+		HashSet<Integer> itemOfGroup = new HashSet<Integer>();
+		String[] str = context.getConfiguration().get("ItemGroup").split(";")[groupNum].split(":")[1].split(" ");
+		for(String s : str)
+			itemOfGroup.add(Integer.parseInt(s));
+		return itemOfGroup;
+		
 	}
 	
+	public HashSet<Integer> getItemOfGroup(int groupNum, Context context) {
+		HashSet<Integer> itemOfGroup = new HashSet<Integer>();
+		SequenceFile.Reader reader = null;
+		try {
+			URI[] paths = context.getCacheFiles();
+			if(paths == null || paths.length <=0){
+				System.out.println("No DistributedCache keywords File!");
+				System.exit(1);
+			}
+
+			IntWritable key = new IntWritable();
+			IntWritable value = new IntWritable();
+			for(URI path : paths){	
+				if(path.getPath().contains("groupNum")) {
+					reader = new SequenceFile.Reader(context.getConfiguration(), Reader.file(new Path(path)));
+					while (reader.next(key, value)) {
+						//numOfFItem++;
+						if(value.get() == groupNum) {
+							itemOfGroup.add(key.get());
+						}
+					}
+				}
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}finally {
+			IOUtils.closeStream(reader);
+		}
+		return itemOfGroup;
+	}
 	
-	public void printStats() {
+	/*public void printStats() {
 		System.out.println("========== DFIN - STATS ============");
 		System.out.println(" Minsup = " + minSupport);
 		System.out.println(" Number of frequent  itemsets: " + outputCount);
 		System.out.println("=====================================");
-	}
+	}*/
 	class IntegerByRef {
 		int count;
 	}

@@ -30,6 +30,81 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 		allItemsMap = new HashMap<Integer, Integer>();
 		itemGroupNum = new HashMap<Integer, Integer>();
 		groupsNum = context.getConfiguration().getInt("GroupsNum", 1);
+		
+		boolean useFileCache = context.getConfiguration().getBoolean("Cache", true);
+		
+		if(useFileCache)
+			getItem(context);
+		else
+			getItem_bak(context);
+		/*URI[] paths = context.getCacheFiles();
+		if(paths == null || paths.length <=0){
+			System.out.println("No DistributedCache keywords File!");
+			System.exit(1);
+		}
+		SequenceFile.Reader reader = null;
+		try {
+			IntWritable key = new IntWritable();
+			IntWritable value = new IntWritable();
+			for(URI path : paths){	
+				if(path.getPath().contains("Flist")) {
+					reader = new SequenceFile.Reader(context.getConfiguration(), Reader.file(new Path(path)));
+					while (reader.next(key, value)) {
+						allItemsMap.put(key.get(), value.get());
+					}
+				}else if(path.getPath().contains("groupNum")) {
+					reader = new SequenceFile.Reader(context.getConfiguration(), Reader.file(new Path(path)));
+					while (reader.next(key, value)) {
+						itemGroupNum.put(key.get(), value.get());
+					}
+				}
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}finally {
+			IOUtils.closeStream(reader);
+		}*/
+		
+		
+		/*String flist = context.getConfiguration().get("Flist");
+		int i = 0;
+		for(String str : flist.split(" ")) {
+			allItemsMap.put(Integer.parseInt(str), i++);
+		}
+		String[] str = context.getConfiguration().get("ItemGroup").split(";");
+		for(String s : str) {
+			String[] ss = s.split(":");
+			for(String sss : ss[1].split(" "))
+				itemGroupNum.put(Integer.parseInt(sss), Integer.parseInt(ss[0]));
+		}*/
+	}
+	
+	public void map(Object key, Text value, Context context) throws IOException, InterruptedException{
+			
+		String[] line = value.toString().split(" ");
+		ArrayList<Integer> list = new ArrayList<Integer>(line.length);
+		int item;
+		for(int i=1; i<line.length; i++){
+			item = Integer.parseInt(line[i]);
+			if(allItemsMap.containsKey(item))
+				list.add(allItemsMap.get(item));
+		}
+		Collections.sort(list);
+		int[] arrayLine = Tools.toIntArray(list);
+		HashSet<Integer> groups = new HashSet<Integer>(groupsNum);
+		
+		for(int i=list.size()-1; i>=0 && groups.size()<groupsNum ; i--) {
+			int groupID = itemGroupNum.get(list.get(i));
+			
+			if(!groups.contains(groupID)) {
+				int[] array = Arrays.copyOf(arrayLine, i+1);
+				context.write(new IntWritable(groupID), new ValueWritable(array));
+			}
+			groups.add(groupID);
+		}
+	}
+	
+	public void getItem(Context context) throws IOException {
 		URI[] paths = context.getCacheFiles();
 		if(paths == null || paths.length <=0){
 			System.out.println("No DistributedCache keywords File!");
@@ -57,47 +132,19 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 		}finally {
 			IOUtils.closeStream(reader);
 		}
-		/*if(allItemsMap != null) {	
-			//items are reversed and sorted by support descending order
-			List<Entry<Integer,Integer>> list = new ArrayList<Entry<Integer,Integer>>(allItemsMap.entrySet());
-				
-			list.sort(new Comparator<Entry<Integer, Integer>>() {
-				@Override
-				public int compare(Entry<Integer, Integer> o1, Entry<Integer, Integer> o2) {
-					return Objects.equals(o1.getValue(), o2.getValue()) ? (o2.getKey() - o1.getKey()) : (o1.getValue() - o2.getValue());
-				}
-			});
-			int i=0;
-			for(Entry<Integer,Integer> entry : list){
-				allItemsMap.put(entry.getKey(), i++);
-			}
-			list = null;
-		}*/
-		
 	}
 	
-	public void map(Object key, Text value, Context context) throws IOException, InterruptedException{
-			
-		String[] line = value.toString().split(" ");
-		ArrayList<Integer> list = new ArrayList<Integer>(line.length);
-		int item;
-		for(int i=1; i<line.length; i++){
-			item = Integer.parseInt(line[i]);
-			if(allItemsMap.containsKey(item))
-				list.add(allItemsMap.get(item));
+	public void getItem_bak(Context context) throws IOException {
+		String flist = context.getConfiguration().get("Flist");
+		int i = 0;
+		for(String str : flist.split(" ")) {
+			allItemsMap.put(Integer.parseInt(str), i++);
 		}
-		Collections.sort(list);
-		int[] arrayLine = Tools.toIntArray(list);
-		HashSet<Integer> groups = new HashSet<Integer>(groupsNum);
-		
-		for(int i=list.size()-1; i>=0 && groups.size()<groupsNum ; i--) {
-			int groupID = itemGroupNum.get(list.get(i));
-			
-			if(!groups.contains(groupID)) {
-				int[] array = Arrays.copyOf(arrayLine, i+1);
-				context.write(new IntWritable(groupID), new ValueWritable(array));
-			}
-			groups.add(groupID);
+		String[] str = context.getConfiguration().get("ItemGroup").split(";");
+		for(String s : str) {
+			String[] ss = s.split(":");
+			for(String sss : ss[1].split(" "))
+				itemGroupNum.put(Integer.parseInt(sss), Integer.parseInt(ss[0]));
 		}
 	}
 	
