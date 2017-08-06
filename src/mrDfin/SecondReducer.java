@@ -326,8 +326,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		int from_size = bf_currentSize;
 		NodeListTreeNode child = curNode.firstChild;
 		NodeListTreeNode next = null;
+		int tmp = sameCount;
 		while (child != null) {
 			next = child.next;
+			sameCount = tmp;
 			traverse(child, curNode, level + 1, context);
 			for (int c = bf_col; c > from_col; c--) {
 				bf[c] = null;
