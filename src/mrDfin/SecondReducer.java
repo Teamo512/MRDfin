@@ -26,7 +26,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	public int nlNodeCount;
 	public int numOfFItem;
 	
-	public Item[] item;
+	//public Item[] item;
 	public int[] itemSup;
 	
 	
@@ -42,8 +42,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	public int bf_col;
 	public int bf_currentSize;
 	
-	//int outputCount = 0;
-	
+	//public int sameCount;
 	public boolean useFileCache;
 	
 	Set<Integer> set = null;
@@ -71,7 +70,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		nlRoot = new NodeListTreeNode();
 		ppcRoot.label = -1;
 		PPCNodeCount = 0;
-		//numOfFItem = 0;
 		
 		bf_size = 1000000;
 		bf = new int[100000][];
@@ -81,7 +79,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		bf_cursor = 0;
 		bf_col = 0;
 		set = new HashSet<Integer>();
-		//itemOfGroup = getItemOfGroup(key.get(), context);
 		
 		for(ValueWritable value : values){
 			transaction = value.itemset;
@@ -95,8 +92,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		result = new int[numOfFItem];
 		
 		traveseGetNodeSet();
-		
-		
 		
 		ppcRoot = null;
 		
@@ -117,11 +112,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		while (curNode != null) {
 			next = curNode.next;
 			// call the recursive "traverse" method
-			//sameCount = 0;
 			try {
+				//sameCount = 0;
 				traverse(curNode, nlRoot, 1, 0, context);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			for (int c = bf_col; c > from_col; c--) {
@@ -132,15 +126,15 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			bf_currentSize = from_size;
 			curNode = next;
 		}
-		
-		//printStats();
+		SupportDict = null;
+		sameItems = null;
 	}
 	
-	
+	//Build the tree
 	public void buildTree(int[] transaction){
 		
 		int curPos = 0;
-		PPCTreeNode curRoot = (ppcRoot);
+		PPCTreeNode curRoot = ppcRoot;
 		PPCTreeNode rightSibling = null;
 		int tLen = transaction.length;
 		while (curPos != tLen) {
@@ -165,7 +159,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		for (int j = curPos; j < tLen; j++) {
 			PPCTreeNode ppcNode = new PPCTreeNode();
 			ppcNode.label = transaction[j];
-			set.add(transaction[j]);
+			set.add(transaction[j]);  //用来统计这棵树上所有不同元素的个数
 			if (rightSibling != null) {
 				rightSibling.rightSibling = ppcNode;
 				rightSibling = null;
@@ -184,6 +178,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		
 	}
 
+	//Travese the tree and get 2nd frequnet itemset NodeSet
 	public void traveseGetNodeSet() {
 		PPCTreeNode root = ppcRoot.firstChild;
 		int pre = 0;
@@ -273,6 +268,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		}
 	}
 	
+	//初始化枚举树，这是整个挖掘过程的搜索路径
 	public void initializeTree() {
 		NodeListTreeNode lastChild = null;
 		for (int t = numOfFItem - 1; t >= 0; t--) {
@@ -449,10 +445,9 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			}
 			return lastChild;
 		}
-		else
-		{
+		else{
 			bf_cursor = nlNode.NLStartinBf;
-			//delete nlNode;
+			nlNode = null;
 		}
 		return lastChild;
 	}
@@ -501,7 +496,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		if (nlNode.support >= minSupport) {
 			if (ni.support == nlNode.support) {
 				sameItems[sameCountRef.count++] = nj.label;
-				//sameItems[count++] = nj.label;
 				//sameItems[sameCount++] = nj.label;
 			} else {
 				nlNode.label = nj.label;
@@ -518,6 +512,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			return lastChild;
 		} else {
 			bf_cursor = nlNode.NLStartinBf;
+			nlNode = null;
 		}
 		return lastChild;
 	}
@@ -650,12 +645,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		return itemOfGroup;
 	}
 	
-	/*public void printStats() {
-		System.out.println("========== DFIN - STATS ============");
-		System.out.println(" Minsup = " + minSupport);
-		System.out.println(" Number of frequent  itemsets: " + outputCount);
-		System.out.println("=====================================");
-	}*/
 	class IntegerByRef {
 		int count;
 	}
