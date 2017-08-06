@@ -42,7 +42,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	public int bf_col;
 	public int bf_currentSize;
 	
-	//public int sameCount;
+	public int sameCount;
 	public boolean useFileCache;
 	
 	Set<Integer> set = null;
@@ -113,8 +113,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			next = curNode.next;
 			// call the recursive "traverse" method
 			try {
-				//sameCount = 0;
-				traverse(curNode, nlRoot, 1, 0, context);
+				sameCount = 0;
+				traverse(curNode, nlRoot, 1, context);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -292,7 +292,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		
 	}
 	
-	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, int sameCount, Context context) throws IOException, InterruptedException {
+	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, Context context) throws IOException, InterruptedException {
 
 		if(level == 1 && !itemOfGroup.contains(curNode.label))
 			return;
@@ -301,23 +301,11 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		NodeListTreeNode lastChild = null;
 		while (sibling != null) {
 			if ((level == 1 && itemsetCount[(curNode.label - 1) * curNode.label / 2 + sibling.label] >= minSupport)) {
-				IntegerByRef sameCountTemp = new IntegerByRef();
-				sameCountTemp.count = sameCount;
-				lastChild = gen2ItemSet(curNode, sibling, lastChild, sameCountTemp);
-				//lastChild = gen2ItemSet(curNode, sibling, lastChild);
-				sameCount = sameCountTemp.count;
+				lastChild = gen2ItemSet(curNode, sibling, lastChild);
 			}else if(level == 2){
-				IntegerByRef sameCountTemp = new IntegerByRef();
-				sameCountTemp.count = sameCount;
-				lastChild = gen3ItemSet(curNode, sibling, lastChild, sameCountTemp);
-				//lastChild = gen3ItemSet(curNode, sibling, lastChild);
-				sameCount = sameCountTemp.count;
+				lastChild = gen3ItemSet(curNode, sibling, lastChild);
 			} else if (level > 2) {
-				IntegerByRef sameCountTemp = new IntegerByRef();
-				sameCountTemp.count = sameCount;
-				lastChild = getKItemset(curNode, sibling, lastChild, sameCountTemp);
-				//lastChild = getKItemset(curNode, sibling, lastChild);
-				sameCount = sameCountTemp.count;
+				lastChild = getKItemset(curNode, sibling, lastChild);
 			}
 			sibling = sibling.next;
 		}
@@ -340,7 +328,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		NodeListTreeNode next = null;
 		while (child != null) {
 			next = child.next;
-			traverse(child, curNode, level + 1, sameCount, context);
+			traverse(child, curNode, level + 1, context);
 			for (int c = bf_col; c > from_col; c--) {
 				bf[c] = null;
 			}
@@ -352,12 +340,11 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		resultLen--;
 	}
 	
-	public NodeListTreeNode gen2ItemSet(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild, IntegerByRef sameCount) {
+	public NodeListTreeNode gen2ItemSet(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild) {
 		int i = ni.label;
 		int j = nj.label;
 		if (ni.support == itemsetCount[(i - 1) * i / 2 + j]) {
-			sameItems[sameCount.count++] = nj.label;
-			//sameItems[sameCount++] = nj.label;
+			sameItems[sameCount++] = nj.label;
 		} else {
 			NodeListTreeNode nlNode = new NodeListTreeNode();
 			nlNode.label = j;
@@ -378,7 +365,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		return lastChild;
 	}
 
-	public NodeListTreeNode gen3ItemSet(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild, IntegerByRef sameCount) {
+	public NodeListTreeNode gen3ItemSet(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild) {
 		if(bf_cursor + ni.NLLength > bf_currentSize)
 		{
 			bf_col++;
@@ -425,8 +412,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		if(nlNode.support >= minSupport)
 		{
 			if(ni.support == nlNode.support)
-				sameItems[sameCount.count++] = nj.label;
-				//sameItems[sameCount++] = nj.label;
+				sameItems[sameCount++] = nj.label;
 			else
 			{
 				nlNode.label = nj.label;
@@ -452,7 +438,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		return lastChild;
 	}
 	
-	public NodeListTreeNode getKItemset(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild, IntegerByRef sameCountRef) {
+	public NodeListTreeNode getKItemset(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild) {
 
 		if (bf_cursor + ni.NLLength > bf_currentSize) {
 			bf_col++;
@@ -495,8 +481,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		}
 		if (nlNode.support >= minSupport) {
 			if (ni.support == nlNode.support) {
-				sameItems[sameCountRef.count++] = nj.label;
-				//sameItems[sameCount++] = nj.label;
+				sameItems[sameCount++] = nj.label;
 			} else {
 				nlNode.label = nj.label;
 				nlNode.firstChild = null;
