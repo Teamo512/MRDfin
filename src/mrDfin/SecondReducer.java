@@ -509,11 +509,11 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		if (curNode.support >= minSupport && level > 1) {
 			context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
 			
-			for (int i = 0; i < resultLen; i++) {
+			/*for (int i = 0; i < resultLen; i++) {
 				sb.append(result[i] + ' ');
 			}
 			// append the support of the itemset
-			sb.append("#SUP: " + curNode.support + "\n");
+			sb.append("#SUP: " + curNode.support + "\n");*/
 		}
 		
 		if(sameCount > 0) {
@@ -521,7 +521,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 				
 				context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
 				
-				for (int k = 0; k < resultLen; k++) {
+				/*for (int k = 0; k < resultLen; k++) {
 					sb.append(result[k] + ' ');
 				}
 
@@ -534,11 +534,11 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 						sb.append(sameItems[j] + ' ');
 					}
 				}
-				sb.append("#SUP: " + curNode.support + "\n");				
+				sb.append("#SUP: " + curNode.support + "\n");*/				
 			}
 		}
-		if(sb.length() > 0)
-			context.write(new Text(sb.toString()), NullWritable.get());
+		/*if(sb.length() > 0)
+			context.write(new Text(sb.toString()), NullWritable.get());*/
 		
 	}
 	
