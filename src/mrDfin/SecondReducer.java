@@ -8,11 +8,13 @@ import java.util.Set;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.Reader;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritable, IntWritable>{
+public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, NullWritable>{
 
 	private int minSupport;
 	
@@ -40,7 +42,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 	public int bf_col;
 	public int bf_currentSize;
 	
-	int outputCount = 0;
+	//int outputCount = 0;
 	
 	public boolean useFileCache;
 	
@@ -118,7 +120,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 			//sameCount = 0;
 			try {
 				traverse(curNode, nlRoot, 1, 0, context);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -294,7 +296,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		
 	}
 	
-	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, int sameCount, Context context) throws IOException {
+	public void traverse(NodeListTreeNode curNode, NodeListTreeNode curRoot, int level, int sameCount, Context context) throws IOException, InterruptedException {
 
 		if(level == 1 && !itemOfGroup.contains(curNode.label))
 			return;
@@ -520,18 +522,41 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, IntWritab
 		return lastChild;
 	}
 	
-	public void writeResult(NodeListTreeNode curNode, int sameCount, Context context, int level) throws IOException {
+	public void writeResult(NodeListTreeNode curNode, int sameCount, Context context, int level) throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
 		if (curNode.support >= minSupport && level > 1) {
 			context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
-			//outputCount++;
+			
+			for (int i = 0; i < resultLen; i++) {
+				sb.append(result[i] + ' ');
+			}
+			// append the support of the itemset
+			sb.append("#SUP: " + curNode.support + "\n");
 		}
+		
 		if(sameCount > 0) {
 			for (long i = 1, max = 1 << sameCount; i < max; i++) {
 				
 				context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
-				//outputCount++;
+				
+				for (int k = 0; k < resultLen; k++) {
+					sb.append(result[k] + ' ');
+				}
+
+				// we create a new subset
+				for (int j = 0; j < sameCount; j++) {
+					// check if the j bit is set to 1
+					int isSet = (int) i & (1 << j);
+					if (isSet > 0) {
+						// if yes, add it to the set
+						sb.append(sameItems[j] + ' ');
+					}
+				}
+				sb.append("#SUP: " + curNode.support + "\n");				
 			}
 		}
+		if(sb.length() > 0)
+			context.write(new Text(sb.toString()), NullWritable.get());
 		
 	}
 	

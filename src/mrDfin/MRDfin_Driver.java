@@ -20,8 +20,10 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.Reader;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -164,8 +166,12 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 		job.setMapperClass(SecondMapper.class);
 		job.setReducerClass(SecondReducer.class);
-		job.setOutputKeyClass(IntWritable.class);
-		job.setOutputValueClass(ValueWritable.class);
+		
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(ValueWritable.class);
+		
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(NullWritable.class);
 	
 		job.setNumReduceTasks(reducerNum);
 		

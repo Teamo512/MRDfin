@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.fs.Path;
@@ -90,7 +91,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 				list.add(allItemsMap.get(item));
 		}
 		Collections.sort(list);
-		int[] arrayLine = Tools.toIntArray(list);
+		int[] arrayLine = toIntArray(list);
 		HashSet<Integer> groups = new HashSet<Integer>(groupsNum);
 		
 		for(int i=list.size()-1; i>=0 && groups.size()<groupsNum ; i--) {
@@ -147,6 +148,15 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 				itemGroupNum.put(Integer.parseInt(sss), Integer.parseInt(ss[0]));
 		}
 	}
+	
+	private int[] toIntArray(List<Integer> list) {
+	    int[] intArray = new int[list.size()];
+	    int ix = 0;
+	    for (Integer i : list) {
+	      intArray[ix++] = i;
+	    }
+	    return intArray;
+	  }
 	
 	protected void cleanup(Context context)  throws IOException, InterruptedException{
 		super.cleanup(context); 
