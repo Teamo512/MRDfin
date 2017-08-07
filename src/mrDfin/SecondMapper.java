@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
@@ -22,6 +23,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 
 	private Map<Integer, Integer> allItemsMap; 
 	private Map<Integer, Integer> itemGroupNum; 
+	private Set<Integer> groups;
 	private int groupsNum;
 	/**
 	 * 获取缓存文件，因为要保证最终的flist是按支持度降序排列的，所以此处将文件的迭代访问读取工作放在了getFilst函数中
@@ -31,6 +33,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 		allItemsMap = new HashMap<Integer, Integer>();
 		itemGroupNum = new HashMap<Integer, Integer>();
 		groupsNum = context.getConfiguration().getInt("GroupsNum", 1);
+		groups = new HashSet<Integer>(groupsNum);
 		
 		boolean useFileCache = context.getConfiguration().getBoolean("Cache", true);
 		
@@ -92,7 +95,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 		}
 		Collections.sort(list);
 		int[] arrayLine = toIntArray(list);
-		HashSet<Integer> groups = new HashSet<Integer>(groupsNum);
+		//HashSet<Integer> groups = new HashSet<Integer>(groupsNum);
 		
 		for(int i=list.size()-1; i>=0 && groups.size()<groupsNum ; i--) {
 			int groupID = itemGroupNum.get(list.get(i));
@@ -103,6 +106,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 			}
 			groups.add(groupID);
 		}
+		groups.clear();
 	}
 	
 	public void getItem(Context context) throws IOException {
@@ -160,6 +164,7 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 	
 	protected void cleanup(Context context)  throws IOException, InterruptedException{
 		super.cleanup(context); 
+		groups = null;
 		allItemsMap = null;
 		itemGroupNum = null;
 	}

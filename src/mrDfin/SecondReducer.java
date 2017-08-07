@@ -505,7 +505,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	}
 	
 	public void writeResult(NodeListTreeNode curNode, int sameCount, Context context, int level) throws IOException, InterruptedException {
-		StringBuilder sb = new StringBuilder();
+		//StringBuilder sb = new StringBuilder();
 		if (curNode.support >= minSupport && level > 1) {
 			context.getCounter(MRDfinCounter.TatolFrequentNum).increment(1);
 			
@@ -630,9 +630,5 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			IOUtils.closeStream(reader);
 		}
 		return itemOfGroup;
-	}
-	
-	class IntegerByRef {
-		int count;
 	}
 }

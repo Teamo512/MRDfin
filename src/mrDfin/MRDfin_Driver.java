@@ -129,8 +129,6 @@ public class MRDfin_Driver extends Configured implements Tool{
 		job.setMapperClass(FirstMapper.class);
 		//job.setCombinerClass(FirstCombiner.class);
 		job.setReducerClass(FirstReducer.class);
-		//job.setMapOutputKeyClass(IntWritable.class);
-		//job.setMapOutputValueClass(IntWritable.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(IntWritable.class);
 		
@@ -427,12 +425,8 @@ public class MRDfin_Driver extends Configured implements Tool{
 				br.write("algorithmName" + "\t" + "datasetName" + "\t" + "minSuppPercentage(relative)" + "\t" + "minSupp(absolute)" +  "\t" + "TotalTime" + "\t");
 				br.write("TotalItemsetsNum" + "\t" + "TotalJobsRunningTime" + "\t");
 				
-				br.write("Level1TotalItemsetsNum" + "\t" + "Level1JobRunningTime" + "\t");
-				
-				br.write("Level2TotalItemsetsNum" + "\t" + "Level2JobRunningTime" + "\t");
-				
-				br.write("Level3TotalItemsetsNum" + "\t" + "Level3JobRunningTime" + "\t");
-				
+				for(int i = 0; i < k; i++)
+					br.write("Level"+i+"TotalItemsetsNum" + "\t" + "Level"+i+"JobRunningTime" + "\t");
 				
 				for( int i = 0; i<moreParas.length&&moreParas.length > 1; i=i+2)  {
 					br.write(moreParas[i] + "\t");
