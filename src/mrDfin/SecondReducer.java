@@ -25,10 +25,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	public int PPCNodeCount;
 	public int nlNodeCount;
 	public int numOfFItem;
-	
-	//public Item[] item;
 	public int[] itemSup;
-	
 	
 	public int[] nlistBegin;
 	public int nlistCol;
