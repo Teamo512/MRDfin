@@ -66,7 +66,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		conf.setInt("dataSize", dataSize);
 		conf.set("mapreduce.map.java.opts", "-Xmx"+childJavaOpts+"M");
 		conf.set("mapreduce.reduce.java.opts", "-Xmx"+2*childJavaOpts+"M");
-		conf.set("mapreduce.task.timeout", "6000000");
+		conf.set("mapreduce.task.timeout", "10000000"); //任务最长持续时间
 		conf.setInt("mapperNum", mapperNum);
 	
 		//useFileCache = false;
@@ -123,6 +123,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 		FileInputFormat.addInputPath(job, inPath);
 		FileOutputFormat.setOutputPath(job, outputPath);
+		job.setInputFormatClass(SplitByNumberOfMappersTextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		//job.setOutputFormatClass(TextOutputFormat.class);
 		
@@ -159,7 +160,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 		
 		FileInputFormat.addInputPath(job, inPath);
 		FileOutputFormat.setOutputPath(job, outputPath);
-		
+		job.setInputFormatClass(SplitByNumberOfMappersTextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		
 		job.setMapperClass(SecondMapper.class);
@@ -422,7 +423,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 			
 			if( !resultFile.exists() ) {
 				br  = new BufferedWriter(new FileWriter(resultFile, true));  // true means appending content to the file //here create a non-existed file
-				br.write("algorithmName" + "\t" + "datasetName" + "\t" + "minSuppPercentage(relative)" + "\t" + "minSupp(absolute)" +  "\t" + "TotalTime" + "\t");
+				br.write("algorithmName" + "\t" + "datasetName" + "\t" + "minSuppPercentage(relative)" + "\t" + "minSupp(absolute)" +  "\t" +"mapperNum" + "\t" +"reducerNum" + "\t" +"groupNum" + "\t" + "TotalTime" + "\t");
 				br.write("TotalItemsetsNum" + "\t" + "TotalJobsRunningTime" + "\t");
 				
 				for(int i = 0; i < k; i++)
@@ -439,7 +440,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 			}
 			
 			
-			br.write("MRDfin" + "\t" + dataBaseName + "\t"  + relativeSup*100.0 + "\t" +  minSup +  "\t" + (time/1000.0) + "\t");
+			br.write("MRDfin" + "\t" + dataBaseName + "\t"  + relativeSup*100.0 + "\t" +  minSup + "\t" + mapperNum + "\t" + reducerNum + "\t" + groupNum + "\t" + (time/1000.0) + "\t");
 			
 			br.write(TotalItemsetsNum + "\t" + TotalJobsRunningTime + "\t");
 		
