@@ -156,7 +156,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		for (int j = curPos; j < tLen; j++) {
 			PPCTreeNode ppcNode = new PPCTreeNode();
 			ppcNode.label = transaction[j];
-			set.add(transaction[j]);  //用来统计这棵树上所有不同元素的个数
+			set.add(new Integer(transaction[j]));  //用来统计这棵树上所有不同元素的个数
 			if (rightSibling != null) {
 				rightSibling.rightSibling = ppcNode;
 				rightSibling = null;
