@@ -76,17 +76,22 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		bf_cursor = 0;
 		bf_col = 0;
 		set = new HashSet<Integer>();
-		
+		//Set<Integer> itemset = new HashSet<Integer>();
 		for(ValueWritable value : values){
 			transaction = value.itemset;
+			/*for(int i : transaction)
+				itemset.add(i);*/
 			buildTree(transaction);
 		}
+		
 		numOfFItem = set.size();
 		set = null;
 		itemSup = new int[numOfFItem];
 		
 		resultLen = 0;
 		result = new int[numOfFItem];
+		
+		//itemOfGroup = getItemOfGroup(key.get(), context);
 		
 		traveseGetNodeSet();
 		
@@ -439,11 +444,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	
 	public NodeListTreeNode getKItemset(NodeListTreeNode ni, NodeListTreeNode nj, NodeListTreeNode lastChild) {
 
-		if (bf_cursor + ni.NLLength > bf_currentSize) {
+		if (bf_cursor + nj.NLLength > bf_currentSize) {
 			bf_col++;
 			bf_cursor = 0;
-			bf_currentSize = bf_size > ni.NLLength * 1000 ? bf_size
-					: ni.NLLength * 1000;
+			bf_currentSize = bf_size > ni.NLLength * 1000 ? bf_size : ni.NLLength * 1000;
 			bf[bf_col] = new int[bf_currentSize];
 		}
 
@@ -614,7 +618,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 				if(path.getPath().contains("groupNum")) {
 					reader = new SequenceFile.Reader(context.getConfiguration(), Reader.file(new Path(path)));
 					while (reader.next(key, value)) {
-						//numOfFItem++;
+						numOfFItem++;
 						if(value.get() == groupNum) {
 							itemOfGroup.add(key.get());
 						}

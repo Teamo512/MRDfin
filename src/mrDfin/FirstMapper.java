@@ -21,8 +21,8 @@ public class FirstMapper extends Mapper<Object, Text, IntWritable, IntWritable>{
 	
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException{
 		
-		String[] line = value.toString().split(" ");
-		for(int i=1; i<line.length; i++){
+		String[] line = value.toString().split("\t");
+		for(int i=0; i<line.length; i++){
 			int item = Integer.parseInt(line[i]);
 			Integer count = hashmap.get(item);
 			if(count == null){
