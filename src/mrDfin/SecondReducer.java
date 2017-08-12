@@ -23,7 +23,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	public int[] itemsetCount;
 	public int[] sameItems;
 	public int PPCNodeCount;
-	public int nlNodeCount;
 	public int numOfFItem;
 	public int[] itemSup;
 	
@@ -42,62 +41,51 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 	public int sameCount;
 	public boolean useFileCache;
 	
-	Set<Integer> set = null;
 	Set<Integer> itemOfGroup = null;
 	
 	// public FILE out;
 	public int[] result; // the current itemset
 	public int resultLen = 0; // the size of the current itemset
-	public int resultCount = 0;
-	public int nlLenSum = 0; // node list length of the current itemset
 	
 	protected void setup(Context context) throws IOException, InterruptedException{
 		super.setup(context);		
-		minSupport = context.getConfiguration().getInt("minSup", 0);
-		
-		nlRoot = new NodeListTreeNode();
-		nlNodeCount = 0;
-		
+		minSupport = context.getConfiguration().getInt("minSup", 0);	
+		nlRoot = new NodeListTreeNode();	
 		useFileCache = context.getConfiguration().getBoolean("Cache", true);
 	}
 	
 	public void reduce(IntWritable key, Iterable<ValueWritable> values, Context context){
 		int[] transaction = null;
-		ppcRoot = new PPCTreeNode();
-		nlRoot = new NodeListTreeNode();
+		ppcRoot = new PPCTreeNode();		
 		ppcRoot.label = -1;
 		PPCNodeCount = 0;
-		
-		bf_size = 1000000;
-		bf = new int[100000][];
-		bf_currentSize = bf_size * 10;
-		bf[0] = new int[bf_currentSize];
 
-		bf_cursor = 0;
-		bf_col = 0;
-		set = new HashSet<Integer>();
-		//Set<Integer> itemset = new HashSet<Integer>();
 		for(ValueWritable value : values){
 			transaction = value.itemset;
-			/*for(int i : transaction)
-				itemset.add(i);*/
 			buildTree(transaction);
 		}
-		
-		numOfFItem = set.size();
-		set = null;
+		transaction = null;
+		numOfFItem += 1;//因为计数从0开始，所以算个数时需要加1
 		itemSup = new int[numOfFItem];
 		
 		resultLen = 0;
 		result = new int[numOfFItem];
 		
-		//itemOfGroup = getItemOfGroup(key.get(), context);
+		bf_size = 1000000;
+		bf = new int[100000][];
+		bf_currentSize = bf_size * 10;
+		//bf[0] = new int[bf_currentSize];
+
+		bf_cursor = 0;
+		bf_col = 0;
 		
+		nlRoot = new NodeListTreeNode();
 		traveseGetNodeSet();
 		
 		ppcRoot = null;
 		
 		initializeTree();
+		itemSup = null;
 		sameItems = new int[numOfFItem];
 
 		int from_cursor = bf_cursor;
@@ -139,6 +127,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		PPCTreeNode curRoot = ppcRoot;
 		PPCTreeNode rightSibling = null;
 		int tLen = transaction.length;
+		if(numOfFItem < transaction[tLen-1])
+			numOfFItem = transaction[tLen-1];//统计其中最大的元素来作为元素的个数，因为所有元素都是按找递增顺序重新赋值的。
 		while (curPos != tLen) {
 			PPCTreeNode child = curRoot.firstChild;
 			while (child != null) {
@@ -161,7 +151,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		for (int j = curPos; j < tLen; j++) {
 			PPCTreeNode ppcNode = new PPCTreeNode();
 			ppcNode.label = transaction[j];
-			set.add(new Integer(transaction[j]));  //用来统计这棵树上所有不同元素的个数
 			if (rightSibling != null) {
 				rightSibling.rightSibling = ppcNode;
 				rightSibling = null;
@@ -228,8 +217,10 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			bf_col++;
 			bf_cursor = 0;
 			bf_currentSize = sum + 1000;
-			bf[bf_col] = new int[bf_currentSize];
+			//bf[bf_col] = new int[bf_currentSize];
 		}
+		bf[bf_col] = new int[bf_currentSize];
+		
 		nlistCol = bf_col;
 		firstNlistBegin = bf_cursor;
 		root = ppcRoot.firstChild;
@@ -311,8 +302,8 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 			}
 			sibling = sibling.next;
 		}
-		resultCount += Math.pow(2.0, sameCount);
-		nlLenSum += Math.pow(2.0, sameCount) * curNode.NLLength;
+		//resultCount += Math.pow(2.0, sameCount);
+		//nlLenSum += Math.pow(2.0, sameCount) * curNode.NLLength;
 
 		result[resultLen++] = curNode.label;
 
@@ -321,7 +312,7 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 		writeResult(curNode, sameCount, context, level);
 		// ======== end of write to file
 
-		nlNodeCount++;
+		//nlNodeCount++;
 
 		int from_cursor = bf_cursor;
 		int from_col = bf_col;
@@ -618,7 +609,6 @@ public class SecondReducer extends Reducer<IntWritable, ValueWritable, Text, Nul
 				if(path.getPath().contains("groupNum")) {
 					reader = new SequenceFile.Reader(context.getConfiguration(), Reader.file(new Path(path)));
 					while (reader.next(key, value)) {
-						numOfFItem++;
 						if(value.get() == groupNum) {
 							itemOfGroup.add(key.get());
 						}

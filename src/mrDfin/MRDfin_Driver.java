@@ -324,9 +324,16 @@ public class MRDfin_Driver extends Configured implements Tool{
 		try {
 			Path path = new Path(uri);
 			writer = SequenceFile.createWriter(conf, SequenceFile.Writer.file(path), SequenceFile.Writer.keyClass(IntWritable.class), SequenceFile.Writer.valueClass(IntWritable.class));
+			if(N <= 1) {
+				conf.setInt("GroupsNum", 1);
+				for(int i = 0; i < M; i++) {
+					writer.append(new IntWritable(i), new IntWritable(1));
+				}
+				return;
+			}
 			if(M <= N) {  //模式个数M不足分组数大小N时，就分成M组，否则就分成N组
 				conf.setInt("GroupsNum", M);
-				for(int i = 0; i < M-1; i++) {
+				for(int i = 0; i < M; i++) {
 					writer.append(new IntWritable(i), new IntWritable(i));
 				}
 				
@@ -359,6 +366,15 @@ public class MRDfin_Driver extends Configured implements Tool{
 		StringBuilder str = new StringBuilder();
 		int M = itemSup.length;
 		try {
+			if(N <= 1) {
+				conf.setInt("GroupsNum", 1);
+				for(int i = 0; i < M; i++) {
+					str.append(i+":"+1);
+					str.append(";");
+				}
+				str.append(M-1+":"+ (M-1));
+				return;
+			}
 			if(M <= N) {  //模式个数M不足分组数大小N时，就分成M组，否则就分成N组
 				conf.setInt("GroupsNum", M);
 				for(int i = 0; i < M-1; i++) {
