@@ -1,5 +1,6 @@
 package mrDfin;
 
+import static mrDfin.MRDfin_Driver.ItemDelimiter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,8 +22,8 @@ public class FirstMapper extends Mapper<Object, Text, IntWritable, IntWritable>{
 	
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException{
 		
-		String[] line = value.toString().split("\t");
-		for(int i=0; i<line.length; i++){
+		String[] line = value.toString().split(ItemDelimiter);
+		for(int i=1; i<line.length; i++){
 			int item = Integer.parseInt(line[i]);
 			Integer count = hashmap.get(item);
 			if(count == null){

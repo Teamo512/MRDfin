@@ -1,5 +1,6 @@
 package mrDfin;
 
+import static mrDfin.MRDfin_Driver.ItemDelimiter;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -85,10 +86,10 @@ public class SecondMapper extends Mapper<Object, Text, IntWritable, ValueWritabl
 	
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException{
 			
-		String[] line = value.toString().split("\t");
+		String[] line = value.toString().split(ItemDelimiter);
 		ArrayList<Integer> list = new ArrayList<Integer>(line.length);
 		int item;
-		for(int i=0; i<line.length; i++){
+		for(int i=1; i<line.length; i++){
 			item = Integer.parseInt(line[i]);
 			if(allItemsMap.containsKey(item))
 				list.add(allItemsMap.get(item));

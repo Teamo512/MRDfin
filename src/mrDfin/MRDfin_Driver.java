@@ -51,7 +51,7 @@ public class MRDfin_Driver extends Configured implements Tool{
 	
 	public boolean useFileCache; 
 	
-	
+	public static final String ItemDelimiter = " ";
 	public static final String PART = "part";
 	public static final String FrequentItem = "frequentItem";
 	
