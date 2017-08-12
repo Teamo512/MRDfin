@@ -69,8 +69,8 @@ public class MRDfin_Driver extends Configured implements Tool{
 		conf.set("mapreduce.task.timeout", "10000000"); //任务最长持续时间
 		conf.setInt("mapperNum", mapperNum);
 	
-		//useFileCache = false;
-		useFileCache = true;
+		useFileCache = false;
+		//useFileCache = true;
 		conf.setBoolean("Cache", useFileCache);
 		
 		//命令行的额外参数，必须是成对出现的，分别为配置文件的的属性名和属性值。
@@ -368,11 +368,11 @@ public class MRDfin_Driver extends Configured implements Tool{
 		try {
 			if(N <= 1) {
 				conf.setInt("GroupsNum", 1);
+				str.append(0+":");
 				for(int i = 0; i < M; i++) {
-					str.append(i+":"+1);
-					str.append(";");
+					str.append(i+" ");
 				}
-				str.append(M-1+":"+ (M-1));
+				conf.set("ItemGroup", str.toString().trim());
 				return;
 			}
 			if(M <= N) {  //模式个数M不足分组数大小N时，就分成M组，否则就分成N组
